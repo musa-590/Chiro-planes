@@ -10,6 +10,7 @@ import Card from '../../components/ui/Card.jsx'
 import Loader from '../../components/ui/Loader.jsx'
 import { Input } from '../../components/ui/Input.jsx'
 import Button from '../../components/ui/Button.jsx'
+import UserPlanEditor from '../../components/admin/UserPlanEditor.jsx'
 
 export default function UserDetail() {
   const { id } = useParams()
@@ -17,6 +18,7 @@ export default function UserDetail() {
   const [user, setUser] = useState(null)
   const [plan, setPlan] = useState(null)
   const [templates, setTemplates] = useState([])
+  const [foods, setFoods] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [duration, setDuration] = useState(28)
   const [saving, setSaving] = useState(false)
@@ -40,6 +42,10 @@ export default function UserDetail() {
       const { data: t } = await supabase.from('plan_templates').select('id, name, duration_days').eq('is_active', true)
       setTemplates(t || [])
       if (t?.[0]) setSelectedTemplate(t[0].id)
+      
+      // Cargar alimentos para el editor
+      const { data: f } = await supabase.from('foods').select('id, name, brand').order('name')
+      setFoods(f || [])
     }
     load()
   }, [id])
@@ -171,13 +177,21 @@ export default function UserDetail() {
 
       <h3 className="font-semibold mt-6 mb-2 text-white">Plan actual</h3>
       {plan ? (
-        <Card>
-          <p className="font-semibold text-white">{plan.plan_template?.name}</p>
-          <p className="text-sm text-muted-light mt-1">
-            {formatDate(plan.starts_at)} → {formatDate(plan.expires_at)} ({daysUntil(plan.expires_at)} dias)
-          </p>
-          <p className="text-xs text-muted mt-1">Estado: {plan.status}</p>
-        </Card>
+        <>
+          <Card>
+            <p className="font-semibold text-white">{plan.plan_template?.name}</p>
+            <p className="text-sm text-muted-light mt-1">
+              {formatDate(plan.starts_at)} → {formatDate(plan.expires_at)} ({daysUntil(plan.expires_at)} dias)
+            </p>
+            <p className="text-xs text-muted mt-1">Estado: {plan.status}</p>
+          </Card>
+
+          {plan.status === 'active' && (
+            <div className="mt-4">
+              <UserPlanEditor userPlan={plan} foods={foods} />
+            </div>
+          )}
+        </>
       ) : (
         <Card><p className="text-muted-light text-sm">Sin plan asignado.</p></Card>
       )}

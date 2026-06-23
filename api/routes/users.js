@@ -85,6 +85,17 @@ router.post('/:id/assign-plan', validate(assignPlanSchema), async (req, res, nex
 
     if (error) throw error
 
+    // Copiar items del template al user_plan (personalización)
+    const { error: copyError } = await supabaseAdmin.rpc('copy_template_items_to_user_plan', {
+      p_template_id: plan_template_id,
+      p_user_plan_id: data.id,
+    })
+
+    if (copyError) {
+      logger.error({ err: copyError }, 'failed to copy template items to user_plan')
+      // No fallar la asignación si falla la copia, solo loguear
+    }
+
     await supabaseAdmin
       .from('profiles')
       .update({ status: 'active', plan_expires_at: expires.toISOString() })
@@ -100,6 +111,108 @@ router.post('/:id/assign-plan', validate(assignPlanSchema), async (req, res, nex
     res.json({ user_plan: data })
   } catch (err) {
     logger.error({ err }, 'assign-plan failed')
+    next(err)
+  }
+})
+
+// Obtener items personalizados de un user_plan
+router.get('/:id/user-plan-items', async (req, res, next) => {
+  try {
+    const { user_plan_id } = req.query
+    
+    if (!user_plan_id) {
+      return res.status(400).json({ error: 'user_plan_id is required' })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('plan_items')
+      .select('*')
+      .eq('user_plan_id', user_plan_id)
+      .order('week_number', { ascending: true })
+      .order('day_of_week', { ascending: true })
+      .order('order_index', { ascending: true })
+
+    if (error) throw error
+    res.json({ items: data })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Actualizar un item personalizado
+router.put('/user-plan-items/:itemId', async (req, res, next) => {
+  try {
+    const { itemId } = req.params
+    const { slot_name, foods, notes, week_number, day_of_week, order_index } = req.body
+
+    const { data, error } = await supabaseAdmin
+      .from('plan_items')
+      .update({
+        slot_name,
+        foods,
+        notes,
+        week_number,
+        day_of_week,
+        order_index,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', itemId)
+      .select()
+      .single()
+
+    if (error) throw error
+    res.json({ item: data })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Eliminar un item personalizado
+router.delete('/user-plan-items/:itemId', async (req, res, next) => {
+  try {
+    const { itemId } = req.params
+
+    const { error } = await supabaseAdmin
+      .from('plan_items')
+      .delete()
+      .eq('id', itemId)
+
+    if (error) throw error
+    res.json({ success: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Agregar un nuevo item personalizado
+router.post('/:id/user-plan-items', async (req, res, next) => {
+  try {
+    const { user_plan_id } = req.query
+    const { slot_name, foods, notes, week_number, day_of_week, order_index } = req.body
+
+    if (!user_plan_id) {
+      return res.status(400).json({ error: 'user_plan_id is required' })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('plan_items')
+      .insert({
+        user_plan_id,
+        slot_name,
+        foods: foods || [],
+        notes,
+        week_number,
+        day_of_week,
+        order_index: order_index || 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    res.json({ item: data })
+  } catch (err) {
     next(err)
   }
 })

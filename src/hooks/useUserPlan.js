@@ -47,10 +47,11 @@ export function useUserPlan(userId) {
       const day = planDayFromStart(activePlan.starts_at)
       setPlanDay(day)
 
+      // Consultar items personalizados del user_plan (no del template)
       const { data: planItems } = await supabase
         .from('plan_items')
         .select('*')
-        .eq('plan_template_id', activePlan.plan_template_id)
+        .eq('user_plan_id', activePlan.id)
         .eq('week_number', day.week)
         .eq('day_of_week', day.day)
         .order('order_index', { ascending: true })
