@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { supabaseAdmin } from '../config/supabase.js'
-import { requireAuth, requireAdmin } from '../middleware/auth.js'
+import { requireAuth } from '../middleware/auth.js'
+import { requireAdmin } from '../middleware/adminOnly.js'
 import { writeLimiter, writeSlowDown } from '../middleware/rateLimit.js'
 import { validate } from '../middleware/validate.js'
 import { planTemplateSchema } from '../schemas/plan.schema.js'
