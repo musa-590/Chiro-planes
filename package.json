@@ -1,0 +1,43 @@
+{
+  "name": "chiro-shimokawa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:all": "concurrently -k -n web,api -c yellow,cyan \"npm:dev\" \"npm:api:dev\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "api:dev": "node api/server.js",
+    "lint": "echo 'lint: not configured'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "express-slow-down": "^2.0.3",
+    "express-timeout-handler": "^2.1.1",
+    "helmet": "^7.1.0",
+    "pino": "^9.4.0",
+    "pino-pretty": "^11.2.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-helmet-async": "^2.0.5",
+    "react-router-dom": "^6.26.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.3",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.10",
+    "vite": "^5.4.0"
+  }
+}

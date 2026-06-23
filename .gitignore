@@ -1,0 +1,98 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+.pnpm-store/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Entornos y secretos (NUNCA commitear)
+.env
+.env.*
+!.env.example
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.bak
+.envrc
+.direnv/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+out/
+.vite/
+.cache/
+.parcel-cache/
+.turbo/
+.vercel/
+.vercel_build_output/
+
+# Pre-render
+prerender/dist/
+
+# Tests / coverage
+coverage/
+.nyc_output/
+
+# Linters / formatters
+.eslintcache
+.stylelintcache
+.prettiercache
+
+# Supabase (no se sube — la BD se gestiona en el dashboard)
+supabase/
+supabase/.branches
+supabase/.temp
+
+# Opencode (config local)
+opencode/
+
+# Certs / llaves
+*.pem
+*.key
+*.crt
+*.cer
+keystore.jks
+.jks
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.fuse_hidden*
+.fuse_*
+.history/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Misc
+*.tgz
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml

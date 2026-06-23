@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-ink text-white antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, [role="button"] {
+    @apply min-h-11;
+  }
+  a {
+    @apply min-h-11 inline-flex items-center;
+  }
+}
+
+@layer utilities {
+  .safe-area-pt { padding-top: env(safe-area-inset-top); }
+  .safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-area-pl { padding-left: env(safe-area-inset-left); }
+  .safe-area-pr { padding-right: env(safe-area-inset-right); }
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .animate-pageIn {
+    animation: pageIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-origin: center top;
+  }
+  .animate-bookTurn {
+    animation: bookTurn 0.55s cubic-bezier(0.45, 0, 0.25, 1);
+    transform-origin: left center;
+    backface-visibility: hidden;
+    perspective: 1800px;
+    will-change: transform, opacity;
+  }
+  .animate-bookTurn-right {
+    animation: bookTurnRight 0.55s cubic-bezier(0.45, 0, 0.25, 1);
+    transform-origin: right center;
+    backface-visibility: hidden;
+    perspective: 1800px;
+    will-change: transform, opacity;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pageIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+    filter: blur(2px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes bookTurn {
+  0% {
+    opacity: 0;
+    transform: perspective(1800px) rotateY(-100deg) scale(0.95);
+    box-shadow: -20px 0 40px -10px rgba(0, 0, 0, 0.3);
+  }
+  40% {
+    opacity: 1;
+    box-shadow: -10px 0 20px -5px rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg) scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+@keyframes bookTurnRight {
+  0% {
+    opacity: 0;
+    transform: perspective(1800px) rotateY(100deg) scale(0.95);
+    box-shadow: 20px 0 40px -10px rgba(0, 0, 0, 0.3);
+  }
+  40% {
+    opacity: 1;
+    box-shadow: 10px 0 20px -5px rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg) scale(1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pageIn,
+  .animate-bookTurn,
+  .animate-bookTurn-right,
+  .animate-fadeIn {
+    animation: none;
+  }
+}
+
+/* ====== LIGHT THEME OVERRIDES ====== */
+html.light {
+  --bg-app: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #F3F4F6;
+  --bg-nav: #FAFAFA;
+  --bg-deep: #FAFAFA;
+  --border: #E5E7EB;
+  --border-strong: #D1D5DB;
+  --text-primary: #111111;
+  --text-secondary: #4B5563;
+  --text-faint: #6B7280;
+  --shadow-card: 0 1px 2px 0 rgba(0,0,0,0.04);
+}
+
+html.light body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+}
+
+html.light .bg-ink { background-color: var(--bg-app) !important; }
+html.light .bg-ink-900 { background-color: var(--bg-nav) !important; }
+html.light .bg-ink-800 {
+  background-color: var(--bg-card) !important;
+  box-shadow: var(--shadow-card);
+}
+html.light .bg-ink-700 { background-color: var(--bg-elevated) !important; }
+html.light .bg-ink\/90 { background-color: rgba(255, 255, 255, 0.92) !important; }
+html.light .shadow-2xl { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.12) !important; }
+html.light .border-ink-700 { border-color: var(--border) !important; }
+
+html.light .text-white { color: var(--text-primary) !important; }
+html.light .text-muted-light { color: var(--text-secondary) !important; }
+html.light .text-muted { color: var(--text-faint) !important; }
+
+html.light .border-ink-700 { border-color: var(--border) !important; }
+html.light .border-ink { border-color: var(--border-strong) !important; }
+html.light .border-muted-dark { border-color: var(--border-strong) !important; }
+html.light .border-muted { border-color: var(--border) !important; }
+
+html.light .placeholder\:text-muted::placeholder { color: var(--text-faint) !important; }
+
+html.light select,
+html.light option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+html.light input,
+html.light textarea {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
