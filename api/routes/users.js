@@ -149,24 +149,28 @@ router.put('/user-plan-items/:itemId', async (req, res, next) => {
     const { itemId } = req.params
     const { slot_name, foods, notes, week_number, day_of_week, order_index } = req.body
 
+    const updateData = {}
+    if (slot_name !== undefined) updateData.slot_name = slot_name
+    if (foods !== undefined) updateData.foods = foods
+    if (notes !== undefined) updateData.notes = notes
+    if (week_number !== undefined) updateData.week_number = week_number
+    if (day_of_week !== undefined) updateData.day_of_week = day_of_week
+    if (order_index !== undefined) updateData.order_index = order_index
+
     const { data, error } = await supabaseAdmin
       .from('plan_items')
-      .update({
-        slot_name,
-        foods,
-        notes,
-        week_number,
-        day_of_week,
-        order_index,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', itemId)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      logger.error({ error, itemId }, 'Failed to update user plan item')
+      throw error
+    }
     res.json({ item: data })
   } catch (err) {
+    logger.error({ err }, 'user-plan-items PUT failed')
     next(err)
   }
 })
@@ -208,15 +212,17 @@ router.post('/:id/user-plan-items', async (req, res, next) => {
         week_number,
         day_of_week,
         order_index: order_index || 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       })
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      logger.error({ error, user_plan_id, body: req.body }, 'Failed to insert user plan item')
+      throw error
+    }
     res.json({ item: data })
   } catch (err) {
+    logger.error({ err }, 'user-plan-items POST failed')
     next(err)
   }
 })
