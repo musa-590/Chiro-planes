@@ -132,9 +132,13 @@ router.get('/:id/user-plan-items', async (req, res, next) => {
       .order('day_of_week', { ascending: true })
       .order('order_index', { ascending: true })
 
-    if (error) throw error
-    res.json({ items: data })
+    if (error) {
+      logger.error({ error, user_plan_id }, 'Failed to fetch user plan items')
+      throw error
+    }
+    res.json({ items: data || [] })
   } catch (err) {
+    logger.error({ err }, 'user-plan-items GET failed')
     next(err)
   }
 })
