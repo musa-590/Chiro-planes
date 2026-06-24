@@ -24,7 +24,11 @@ export default function Users() {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
-      let q1 = supabase.from('profiles').select('*').order('created_at', { ascending: false })
+      let q1 = supabase
+        .from('profiles')
+        .select('*')
+        .neq('role', 'admin')
+        .order('created_at', { ascending: false })
       if (filter !== 'all') q1 = q1.eq('status', filter)
       const { data } = await q1
       setUsers(data || [])

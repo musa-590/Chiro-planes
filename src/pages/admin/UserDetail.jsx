@@ -41,7 +41,10 @@ export default function UserDetail() {
       setPlan(p)
       const { data: t } = await supabase.from('plan_templates').select('id, name, duration_days').eq('is_active', true)
       setTemplates(t || [])
-      if (t?.[0]) setSelectedTemplate(t[0].id)
+      if (t?.[0]) {
+        setSelectedTemplate(t[0].id)
+        setDuration(t[0].duration_days)
+      }
       
       // Cargar alimentos para el editor
       const { data: f } = await supabase.from('foods').select('id, name, brand').order('name')
@@ -49,6 +52,16 @@ export default function UserDetail() {
     }
     load()
   }, [id])
+
+  // Actualizar duración cuando cambia la plantilla seleccionada
+  useEffect(() => {
+    if (selectedTemplate && templates.length > 0) {
+      const template = templates.find(t => t.id === selectedTemplate)
+      if (template) {
+        setDuration(template.duration_days)
+      }
+    }
+  }, [selectedTemplate, templates])
 
   const assignPlan = async (e) => {
     e.preventDefault()
