@@ -31,6 +31,7 @@ export default function History() {
         .from('user_plans')
         .select('id, plan_template_id')
         .eq('user_id', session.user.id)
+        .eq('status', 'active')
         .order('starts_at', { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -39,11 +40,10 @@ export default function History() {
 
       const { data: items } = await supabase
         .from('plan_items')
-        .select('id, plan_template_id')
+        .select('id')
+        .eq('user_plan_id', plan.id)
 
-      const itemIds = new Set(
-        (items || []).filter((i) => i.plan_template_id === plan.plan_template_id).map((i) => i.id)
-      )
+      const itemIds = new Set((items || []).map((i) => i.id))
       const total = itemIds.size
 
       const { data: logs } = await supabase
@@ -55,7 +55,8 @@ export default function History() {
       const grouped = {}
       for (const l of logs || []) {
         if (!itemIds.has(l.plan_item_id)) continue
-        if (!grouped[l.log_date]) grouped[l.log_date] = { done: 0 }
+        if (!grouped[l.log_date]) grouped[l.log_date] = { done: 0, hasAny: false }
+        grouped[l.log_date].hasAny = true
         if (l.completed) grouped[l.log_date].done++
       }
 
@@ -64,12 +65,14 @@ export default function History() {
         const d = new Date()
         d.setDate(d.getDate() - (29 - i))
         const date = d.toISOString().slice(0, 10)
-        const done = grouped[date]?.done || 0
+        const g = grouped[date]
+        const done = g?.done || 0
+        const hasAny = g?.hasAny || false
         let status
         if (total === 0) status = 'no_record'
-        else if (done === 0) status = 'no_record'
         else if (done === total) status = 'complete'
-        else status = 'incomplete'
+        else if (hasAny) status = 'incomplete'
+        else status = 'no_record'
         arr.push({ date, status, done, total })
       }
       setDays(arr)

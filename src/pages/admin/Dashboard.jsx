@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase.js'
 import { APP_NAME } from '../../lib/constants.js'
+import { todayLongDate } from '../../lib/date.js'
 import Card from '../../components/ui/Card.jsx'
 import Loader from '../../components/ui/Loader.jsx'
 
@@ -37,6 +38,10 @@ export default function Dashboard() {
         <title>Panel | {APP_NAME}</title>
         <meta name="robots" content="noindex" />
       </Helmet>
+
+      <div className="text-center mb-4">
+        <p className="text-sm font-semibold text-accent">{todayLongDate()}</p>
+      </div>
 
       <h2 className="text-xl font-bold mb-3 text-white">Resumen</h2>
 

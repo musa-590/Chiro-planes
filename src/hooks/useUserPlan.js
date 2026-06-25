@@ -11,7 +11,9 @@ function planDayFromStart(startsAt) {
   const days = Math.floor((nowMid - startMid) / 86_400_000)
   const dayIndex = Math.max(1, days + 1)
   const week = Math.ceil(dayIndex / 7)
-  const day = ((dayIndex - 1) % 7) + 1
+  // app numbering: 1=Monday … 7=Sunday
+  const startDow = start.getDay() || 7
+  const day = ((startDow - 1 + (dayIndex - 1)) % 7) + 1
   return { week, day, dayIndex }
 }
 
@@ -102,23 +104,28 @@ export function useUserPlan(userId) {
   const toggleMeal = async (planItemId, completed) => {
     if (!plan) return
     const today = todayISO()
-    const existing = todayLogs.find((l) => l.plan_item_id === planItemId)
-    if (existing) {
-      const { data } = await supabase
-        .from('meal_logs')
-        .update({ completed, completed_at: completed ? new Date().toISOString() : null })
-        .eq('id', existing.id)
-        .select()
-        .single()
-      if (data) setTodayLogs((prev) => prev.map((l) => (l.id === existing.id ? data : l)))
-    } else {
-      const { data } = await supabase
-        .from('meal_logs')
-        .insert({ user_id: userId, user_plan_id: plan.id, plan_item_id: planItemId, log_date: today, completed, completed_at: completed ? new Date().toISOString() : null })
-        .select()
-        .single()
-      if (data) setTodayLogs((prev) => [...prev, data])
+    const now = new Date().toISOString()
+    const { data, error } = await supabase
+      .from('meal_logs')
+      .upsert(
+        { user_id: userId, user_plan_id: plan.id, plan_item_id: planItemId, log_date: today, completed, completed_at: completed ? now : null },
+        { onConflict: 'user_plan_id,plan_item_id,log_date', ignoreDuplicates: false }
+      )
+      .select()
+      .single()
+    if (error) {
+      console.error('toggleMeal error:', error)
+      return
     }
+    setTodayLogs((prev) => {
+      const idx = prev.findIndex((l) => l.plan_item_id === planItemId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = data
+        return next
+      }
+      return [...prev, data]
+    })
   }
 
   const dayStatus = (() => {

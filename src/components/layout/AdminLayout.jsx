@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { APP_NAME } from '../../lib/constants.js'
+import { todayShortDate } from '../../lib/date.js'
 import { useAuth } from '../../hooks/useAuth.js'
 import ThemeToggle from '../ThemeToggle.jsx'
 
@@ -20,7 +21,7 @@ export default function AdminLayout() {
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <h1 className="font-bold text-accent truncate">{APP_NAME}</h1>
-            <p className="text-xs text-muted">Panel de administracion</p>
+            <p className="text-xs text-muted">{todayShortDate()} · Panel admin</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <ThemeToggle />

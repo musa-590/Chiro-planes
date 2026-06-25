@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase.js'
-import { api } from '../../lib/api.js'
 import Card from '../ui/Card.jsx'
 import Button from '../ui/Button.jsx'
 import { DAYS, DAY_NAMES } from '../../lib/constants.js'
 
+const UNITS = [
+  { v: 'u', label: 'u' },
+  { v: 'g', label: 'g' },
+  { v: 'kg', label: 'kg' },
+  { v: 'ml', label: 'ml' },
+]
+
 export default function UserPlanEditor({ userPlan, foods }) {
   const [items, setItems] = useState([])
+  const [originalItems, setOriginalItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [expandedWeek, setExpandedWeek] = useState(null)
@@ -21,8 +28,53 @@ export default function UserPlanEditor({ userPlan, foods }) {
   const loadItems = async () => {
     setLoading(true)
     try {
-      const response = await api(`/users/${userPlan.user_id}/user-plan-items?user_plan_id=${userPlan.id}`)
-      setItems(response.items || [])
+      const { data: personalizedItems, error } = await supabase
+        .from('plan_items')
+        .select('*')
+        .eq('user_plan_id', userPlan.id)
+        .order('week_number', { ascending: true })
+        .order('day_of_week', { ascending: true })
+        .order('order_index', { ascending: true })
+
+      if (error) throw error
+
+      let loadedItems = personalizedItems || []
+
+      if (loadedItems.length === 0 && userPlan.plan_template_id) {
+        const { data: templateItems, error: tErr } = await supabase
+          .from('plan_items')
+          .select('*')
+          .eq('plan_template_id', userPlan.plan_template_id)
+          .is('user_plan_id', null)
+          .order('week_number', { ascending: true })
+          .order('day_of_week', { ascending: true })
+          .order('order_index', { ascending: true })
+
+        if (!tErr && templateItems) {
+          loadedItems = templateItems.map((it) => ({
+            ...it,
+            id: null,
+            user_plan_id: userPlan.id,
+            _fromTemplate: true,
+          }))
+          setMsg({ type: 'ok', text: 'Mostrando items del template. Edita lo que necesites y guarda para personalizar.' })
+        }
+      }
+
+      const normalized = loadedItems.map((it) => ({
+        id: it.id,
+        user_plan_id: it.user_plan_id,
+        slot_name: it.slot_name,
+        foods: normalizeFoods(it.foods),
+        notes: it.notes || '',
+        week_number: it.week_number || 1,
+        day_of_week: it.day_of_week || 1,
+        order_index: it.order_index || 0,
+        _fromTemplate: it._fromTemplate || false,
+      }))
+
+      setItems(normalized)
+      setOriginalItems(JSON.parse(JSON.stringify(normalized)))
     } catch (err) {
       setMsg({ type: 'err', text: err.message })
     } finally {
@@ -30,7 +82,9 @@ export default function UserPlanEditor({ userPlan, foods }) {
     }
   }
 
-  const totalWeeks = Math.ceil(userPlan?.duration_days / 7) || 4
+  const totalWeeks = Math.ceil((userPlan?.plan_template?.duration_days || 28) / 7)
+
+  const isDirty = JSON.stringify(items) !== JSON.stringify(originalItems)
 
   const getItemsForWeek = (weekNumber) => {
     return items.filter((item) => item.week_number === weekNumber)
@@ -42,53 +96,86 @@ export default function UserPlanEditor({ userPlan, foods }) {
     )
   }
 
-  const handleAddItem = async (weekNumber, dayOfWeek) => {
-    setSaving(true)
-    try {
-      const orderIndex = getItemsForDay(weekNumber, dayOfWeek).length
-      const response = await api(`/users/${userPlan.user_id}/user-plan-items?user_plan_id=${userPlan.id}`, {
-        method: 'POST',
-        body: {
-          slot_name: 'Nueva comida',
-          foods: [],
-          notes: '',
-          week_number: weekNumber,
-          day_of_week: dayOfWeek,
-          order_index: orderIndex,
-        },
-      })
-      setItems([...items, response.item])
-      setMsg({ type: 'ok', text: 'Comida agregada' })
-    } catch (err) {
-      setMsg({ type: 'err', text: err.message })
-    } finally {
-      setSaving(false)
-    }
+  // Mutaciones locales (sin guardar a BD)
+  const localAddItem = (weekNumber, dayOfWeek) => {
+    const orderIndex = getItemsForDay(weekNumber, dayOfWeek).length
+    setItems([
+      ...items,
+      {
+        id: null,
+        user_plan_id: userPlan.id,
+        slot_name: 'Nueva comida',
+        foods: [],
+        notes: '',
+        week_number: weekNumber,
+        day_of_week: dayOfWeek,
+        order_index: orderIndex,
+        _fromTemplate: true,
+      },
+    ])
   }
 
-  const handleUpdateItem = async (itemId, updates) => {
-    setSaving(true)
-    try {
-      const response = await api(`/users/user-plan-items/${itemId}`, {
-        method: 'PUT',
-        body: updates,
-      })
-      setItems(items.map((item) => (item.id === itemId ? response.item : item)))
-      setMsg({ type: 'ok', text: 'Comida actualizada' })
-    } catch (err) {
-      setMsg({ type: 'err', text: err.message })
-    } finally {
-      setSaving(false)
-    }
+  const localUpdateItem = (index, updates) => {
+    setItems(items.map((it, i) => (i === index ? { ...it, ...updates } : it)))
   }
 
-  const handleDeleteItem = async (itemId) => {
-    if (!confirm('¿Eliminar esta comida?')) return
+  const localDeleteItem = (index) => {
+    setItems(items.filter((_, i) => i !== index))
+  }
+
+  // Guardar TODO: reemplazar items personalizados del user_plan
+  const handleSaveAll = async () => {
     setSaving(true)
+    setMsg(null)
     try {
-      await api(`/users/user-plan-items/${itemId}`, { method: 'DELETE' })
-      setItems(items.filter((item) => item.id !== itemId))
-      setMsg({ type: 'ok', text: 'Comida eliminada' })
+      // 1. Eliminar items personalizados existentes del user_plan
+      const { error: delErr } = await supabase
+        .from('plan_items')
+        .delete()
+        .eq('user_plan_id', userPlan.id)
+
+      if (delErr) throw delErr
+
+      // 2. Si hay items para guardar, insertarlos todos
+      if (items.length > 0) {
+        const rowsToInsert = items.map((it, i) => ({
+          user_plan_id: userPlan.id,
+          plan_template_id: userPlan.plan_template_id || null,
+          slot_name: it.slot_name,
+          foods: it.foods,
+          notes: it.notes || null,
+          week_number: it.week_number,
+          day_of_week: it.day_of_week,
+          order_index: i,
+        }))
+
+        const { data: inserted, error: insErr } = await supabase
+          .from('plan_items')
+          .insert(rowsToInsert)
+          .select()
+
+        if (insErr) throw insErr
+
+        const normalized = (inserted || []).map((it) => ({
+          id: it.id,
+          user_plan_id: it.user_plan_id,
+          slot_name: it.slot_name,
+          foods: normalizeFoods(it.foods),
+          notes: it.notes || '',
+          week_number: it.week_number || 1,
+          day_of_week: it.day_of_week || 1,
+          order_index: it.order_index || 0,
+          _fromTemplate: false,
+        }))
+
+        setItems(normalized)
+        setOriginalItems(JSON.parse(JSON.stringify(normalized)))
+      } else {
+        setItems([])
+        setOriginalItems([])
+      }
+
+      setMsg({ type: 'ok', text: 'Plan personalizado guardado correctamente.' })
     } catch (err) {
       setMsg({ type: 'err', text: err.message })
     } finally {
@@ -106,7 +193,12 @@ export default function UserPlanEditor({ userPlan, foods }) {
 
   return (
     <Card>
-      <h3 className="text-lg font-bold text-white mb-4">Personalizar plan</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-white">Personalizar plan</h3>
+        {isDirty && (
+          <span className="text-xs text-amber-400 font-semibold">Cambios sin guardar</span>
+        )}
+      </div>
 
       {msg && (
         <div
@@ -147,24 +239,28 @@ export default function UserPlanEditor({ userPlan, foods }) {
                 <div className="p-4 bg-ink-900 space-y-4">
                   {DAYS.map((dayOfWeek) => {
                     const dayItems = getItemsForDay(weekNumber, dayOfWeek)
+                    const dayItemIndexes = items
+                      .map((it, idx) => ({ it, idx }))
+                      .filter(({ it }) => it.week_number === weekNumber && it.day_of_week === dayOfWeek)
+
                     return (
                       <div key={dayOfWeek}>
                         <h4 className="text-sm font-semibold text-muted-light mb-2">
                           {DAY_NAMES[dayOfWeek]}
                         </h4>
                         <div className="space-y-2 ml-2">
-                          {dayItems.map((item) => (
+                          {dayItemIndexes.map(({ it, idx }) => (
                             <ItemEditor
-                              key={item.id}
-                              item={item}
+                              key={idx}
+                              item={it}
                               foods={foods}
-                              onUpdate={(updates) => handleUpdateItem(item.id, updates)}
-                              onDelete={() => handleDeleteItem(item.id)}
+                              onUpdate={(updates) => localUpdateItem(idx, updates)}
+                              onDelete={() => localDeleteItem(idx)}
                               saving={saving}
                             />
                           ))}
                           <button
-                            onClick={() => handleAddItem(weekNumber, dayOfWeek)}
+                            onClick={() => localAddItem(weekNumber, dayOfWeek)}
                             disabled={saving}
                             className="text-sm text-accent hover:text-accent-hover disabled:opacity-50"
                           >
@@ -180,6 +276,27 @@ export default function UserPlanEditor({ userPlan, foods }) {
           )
         })}
       </div>
+
+      {/* Botón guardar personalización */}
+      <div className="mt-6 flex gap-2">
+        <Button
+          onClick={handleSaveAll}
+          disabled={!isDirty || saving}
+          className="flex-1"
+        >
+          {saving ? 'Guardando...' : 'Guardar personalización'}
+        </Button>
+        <button
+          onClick={() => {
+            setItems(JSON.parse(JSON.stringify(originalItems)))
+            setMsg(null)
+          }}
+          disabled={!isDirty || saving}
+          className="flex-1 text-muted-light border border-ink-700 font-bold py-3 px-6 rounded-xl min-h-12 disabled:opacity-50"
+        >
+          Descartar
+        </button>
+      </div>
     </Card>
   )
 }
@@ -188,7 +305,7 @@ function ItemEditor({ item, foods, onUpdate, onDelete, saving }) {
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
     slot_name: item.slot_name,
-    foods: item.foods || [],
+    foods: normalizeFoods(item.foods),
     notes: item.notes || '',
   })
 
@@ -200,7 +317,7 @@ function ItemEditor({ item, foods, onUpdate, onDelete, saving }) {
   const handleCancel = () => {
     setFormData({
       slot_name: item.slot_name,
-      foods: item.foods || [],
+      foods: normalizeFoods(item.foods),
       notes: item.notes || '',
     })
     setEditing(false)
@@ -307,10 +424,9 @@ function ItemEditor({ item, foods, onUpdate, onDelete, saving }) {
                   onChange={(e) => handleUpdateFood(index, { unit: e.target.value })}
                   className="w-16 px-2 py-1 bg-ink-900 border border-ink-700 rounded text-xs text-white"
                 >
-                  <option value="u">u</option>
-                  <option value="g">g</option>
-                  <option value="kg">kg</option>
-                  <option value="ml">ml</option>
+                  {UNITS.map((u) => (
+                    <option key={u.v} value={u.v}>{u.label}</option>
+                  ))}
                 </select>
                 <button
                   onClick={() => handleRemoveFood(index)}
@@ -348,7 +464,7 @@ function ItemEditor({ item, foods, onUpdate, onDelete, saving }) {
 
       <div className="flex gap-2">
         <Button onClick={handleSave} disabled={saving} size="sm">
-          Guardar
+          Aplicar
         </Button>
         <Button onClick={handleCancel} disabled={saving} variant="secondary" size="sm">
           Cancelar
@@ -356,4 +472,12 @@ function ItemEditor({ item, foods, onUpdate, onDelete, saving }) {
       </div>
     </div>
   )
+}
+
+function normalizeFoods(foods) {
+  if (!Array.isArray(foods)) return []
+  return foods.map((f) => {
+    if (typeof f === 'string') return { id: f, qty: 1, unit: 'u' }
+    return { id: f.id, qty: f.qty ?? 1, unit: f.unit ?? 'u' }
+  }).filter((f) => f.id)
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth.js'
 import { APP_NAME } from '../../lib/constants.js'
+import { todayShortDate } from '../../lib/date.js'
 import ExpirationAlert from '../user/ExpirationAlert.jsx'
 import { useUserPlan } from '../../hooks/useUserPlan.js'
 import ThemeToggle from '../ThemeToggle.jsx'
@@ -25,7 +26,10 @@ export default function UserLayout() {
     <div className="min-h-screen flex flex-col bg-ink">
       <header className="sticky top-0 z-40 bg-ink border-b border-ink-700 safe-area-pt">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="font-bold text-accent text-lg">{APP_NAME}</h1>
+          <div className="min-w-0">
+            <h1 className="font-bold text-accent text-lg">{APP_NAME}</h1>
+            <p className="text-xs text-muted">{todayShortDate()}</p>
+          </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
             <button onClick={signOut} className="text-sm text-muted-light min-h-10 px-3">Salir</button>

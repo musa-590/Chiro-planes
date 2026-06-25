@@ -25,6 +25,7 @@ export default function UserDetail() {
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
   const [deactivating, setDeactivating] = useState(false)
   const [msg, setMsg] = useState(null)
+  const [showReassign, setShowReassign] = useState(false)
   const { metrics, loading: mLoading } = useBodyMetrics(id)
 
   useEffect(() => {
@@ -209,38 +210,71 @@ export default function UserDetail() {
         <Card><p className="text-muted-light text-sm">Sin plan asignado.</p></Card>
       )}
 
-      <h3 className="font-semibold mt-6 mb-2 text-white">Asignar / reasignar plan</h3>
-      <Card>
-        {templates.length === 0 ? (
-          <p className="text-sm text-muted-light">Primero crea plantillas en Planes.</p>
-        ) : (
-          <form onSubmit={assignPlan} className="space-y-3">
-            <label className="block">
-              <span className="block text-sm font-medium text-muted-light mb-1">Plantilla</span>
-              <select
-                value={selectedTemplate}
-                onChange={(e) => setSelectedTemplate(e.target.value)}
-                className="w-full min-h-12 px-4 py-2 bg-ink-800 text-white border border-ink-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
-              >
-                {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </label>
-            <Input
-              label="Duracion (dias)"
-              type="number"
-              min="1"
-              value={duration}
-              onChange={(e) => setDuration(parseInt(e.target.value) || 1)}
-            />
-            {msg && (
-              <p className={`text-sm ${msg.type === 'ok' ? 'text-accent' : 'text-red-400'}`}>{msg.text}</p>
+      {/* Formulario de asignación: solo si no hay plan activo O si el admin quiere reasignar */}
+      {(!plan || plan.status !== 'active' || showReassign) && (
+        <>
+          <h3 className="font-semibold mt-6 mb-2 text-white">
+            {plan && plan.status === 'active' ? 'Reasignar plan' : 'Asignar plan'}
+          </h3>
+          <Card>
+            {plan && plan.status === 'active' && (
+              <p className="text-xs text-amber-400 mb-3">
+                Reasignar vencera el plan actual y creara uno nuevo. Las comidas personalizadas se perderan.
+              </p>
             )}
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Asignando...' : 'Asignar plan'}
-            </Button>
-          </form>
-        )}
-      </Card>
+            {templates.length === 0 ? (
+              <p className="text-sm text-muted-light">Primero crea plantillas en Planes.</p>
+            ) : (
+              <form onSubmit={assignPlan} className="space-y-3">
+                <label className="block">
+                  <span className="block text-sm font-medium text-muted-light mb-1">Plantilla</span>
+                  <select
+                    value={selectedTemplate}
+                    onChange={(e) => setSelectedTemplate(e.target.value)}
+                    className="w-full min-h-12 px-4 py-2 bg-ink-800 text-white border border-ink-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
+                    {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </label>
+                <Input
+                  label="Duracion (dias)"
+                  type="number"
+                  min="1"
+                  value={duration}
+                  onChange={(e) => setDuration(parseInt(e.target.value) || 1)}
+                />
+                {msg && (
+                  <p className={`text-sm ${msg.type === 'ok' ? 'text-accent' : 'text-red-400'}`}>{msg.text}</p>
+                )}
+                <Button type="submit" disabled={saving}>
+                  {saving ? 'Asignando...' : 'Asignar plan'}
+                </Button>
+                {plan && plan.status === 'active' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowReassign(false)}
+                    className="w-full text-muted-light text-sm py-2"
+                  >
+                    Cancelar reasignacion
+                  </button>
+                )}
+              </form>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* Botón para mostrar reasignación cuando hay plan activo */}
+      {plan && plan.status === 'active' && !showReassign && (
+        <div className="mt-6">
+          <button
+            onClick={() => setShowReassign(true)}
+            className="w-full bg-ink-700 text-muted-light border border-ink-700 font-bold py-3 px-6 rounded-xl min-h-12 active:scale-[0.98] transition-transform"
+          >
+            Reasignar plan
+          </button>
+        </div>
+      )}
 
       <h3 className="font-semibold mt-6 mb-2 text-white">Historial de peso y grasa</h3>
       {mLoading ? <Loader /> : metrics.length === 0 ? (
